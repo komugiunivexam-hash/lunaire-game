@@ -10,9 +10,11 @@ const GAME_ASSETS = {
     lunaire_hit: '/assets/lunaire_hit.png',
     lunaire_face: '/assets/lunaire_face.png',
     boss_hound_idle: '/assets/boss_hound_idle.png',
+    boss_hound_telegraph: '/assets/boss_hound_telegraph.png',
     boss_hound_charge: '/assets/boss_hound_charge.png',
     boss_hound_stun: '/assets/boss_hound_stun.png',
     boss_harpy_idle: '/assets/boss_harpy_idle.png',
+    boss_harpy_telegraph: '/assets/boss_harpy_telegraph.png',
     boss_harpy_attack: '/assets/boss_harpy_attack.png',
     boss_harpy_stun: '/assets/boss_harpy_stun.png',
     background: '/assets/background.jpg'
@@ -2327,223 +2329,57 @@ for (let key in GAME_ASSETS) {
                 if (boss.archetype === 'hound') {
                     // --- DRAW DREAM HOUND (Mechanical Quadruped) ---
                     ctx.save();
-                    ctx.scale(boss.facing, 1); // Face direction of boss.facing (1 is right, -1 is left)
-                    
-                    // 1. Rotating Ferris Wheel Gear on its back
-                    ctx.save();
-                    ctx.translate(-15, -60); // Centered on the back of the hound
-                    // Rotation speed increases dramatically when telegraphing or attacking
-                    let gearSpeed = 0.002;
-                    if (boss.state === 'telegraph') gearSpeed = 0.015;
-                    else if (boss.state === 'attack_swing') gearSpeed = 0.035;
-                    let gearAngle = (Date.now() * gearSpeed) % (Math.PI * 2);
-                    ctx.rotate(gearAngle);
-                    
-                    // Draw Ferris wheel gear outline (neon purple/pink glow)
-                    ctx.shadowBlur = 12;
-                    ctx.shadowColor = neonColor;
-                    ctx.strokeStyle = neonColor;
-                    ctx.lineWidth = 2.5;
-                    
-                    // Outer ring
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 32, 0, Math.PI * 2);
-                    ctx.stroke();
-                    
-                    // Inner ring
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 12, 0, Math.PI * 2);
-                    ctx.stroke();
-                    
-                    // Spokes (gears / spokes of Ferris wheel)
-                    const spokesCount = 8;
-                    for (let s = 0; s < spokesCount; s++) {
-                        ctx.rotate(Math.PI * 2 / spokesCount);
-                        ctx.beginPath();
-                        ctx.moveTo(0, 0);
-                        ctx.lineTo(0, -32);
-                        ctx.stroke();
-                        
-                        // Ferris Wheel gondolas / gear teeth (small squares)
-                        ctx.fillStyle = primaryColor;
-                        ctx.fillRect(-3.5, -34, 7, 5);
-                        ctx.strokeStyle = '#ffffff';
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(-3.5, -34, 7, 5);
+                    ctx.scale(boss.facing, 1);
+
+                    // ボスの状態別スプライト切り替え
+                    let img = IMAGES['boss_hound_idle'];
+                    if (boss.state === 'telegraph') {
+                        img = IMAGES['boss_hound_telegraph'];
+                    } else if (boss.state === 'attack_swing') {
+                        img = IMAGES['boss_hound_charge'];
+                    } else if (boss.state === 'stun') {
+                        img = IMAGES['boss_hound_stun'];
                     }
-                    ctx.restore(); // Restores gear transformation
-                    
-                    // 2. Segmented Mechanical Tail
-                    ctx.save();
-                    ctx.translate(-30, -30);
-                    let tailWiggle = Math.sin(Date.now() / 120) * 0.15;
-                    if (boss.state === 'walk') tailWiggle = Math.sin(Date.now() / 60) * 0.35;
-                    ctx.rotate(Math.PI * 0.8 + tailWiggle);
-                    
-                    ctx.strokeStyle = primaryColor;
-                    ctx.lineWidth = 4;
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.bezierCurveTo(15, 5, 25, -10, 35, -5);
-                    ctx.stroke();
-                    
-                    // Tail tip (glowing neon spike)
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = neonColor;
-                    ctx.fillStyle = neonColor;
-                    ctx.beginPath();
-                    ctx.moveTo(35, -5);
-                    ctx.lineTo(42, -12);
-                    ctx.lineTo(44, -3);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.restore();
-                    
-                    // 3. Four Articulated Legs
-                    ctx.fillStyle = primaryColor;
-                    ctx.strokeStyle = '#3d2c6e';
-                    ctx.lineWidth = 2.5;
-                    
-                    let timeVal = Date.now() / 70;
-                    let legOffsets = [0, Math.PI, Math.PI * 0.5, Math.PI * 1.5];
-                    
-                    // Front Right, Back Right, Front Left, Back Left
-                    const legPositions = [
-                        {x: 18, y: -15, isFront: true},   // Front
-                        {x: -20, y: -15, isFront: false}, // Back
-                        {x: 8, y: -15, isFront: true},    // Front inner
-                        {x: -10, y: -15, isFront: false}  // Back inner
-                    ];
-                    
-                    legPositions.forEach((leg, index) => {
-                        ctx.save();
-                        ctx.translate(leg.x, leg.y);
+
+                    if (img && assetsLoaded === totalAssets) {
+                        let bScaleX = 1.0;
+                        let bScaleY = 1.0;
                         
-                        let swing = 0;
-                        if (boss.state === 'walk') {
-                            swing = Math.sin(timeVal + legOffsets[index]) * 0.45;
+                        if (boss.state === 'idle') {
+                            bScaleY = Math.sin(Date.now() / 300) * 0.015 + 0.985;
+                            bScaleX = Math.cos(Date.now() / 300) * 0.005 + 0.995;
                         } else if (boss.state === 'telegraph') {
-                            // Cower / prepare to spring
-                            swing = leg.isFront ? -0.2 : 0.2;
+                            bScaleY = 0.86;
+                            bScaleX = 1.08;
+                        } else if (boss.state === 'attack_swing') {
+                            bScaleX = 1.15;
+                            bScaleY = 0.92;
                         }
                         
-                        ctx.rotate(swing);
+                        if (boss.state === 'stun') {
+                            ctx.shadowBlur = 25;
+                            ctx.shadowColor = '#00e5ff';
+                        }
                         
-                        // Upper leg
-                        ctx.fillRect(-4, 0, 8, 14);
-                        ctx.strokeRect(-4, 0, 8, 14);
+                        // 高さを 135px にリサイズ
+                        let bTargetHeight = 135;
+                        let bScale = bTargetHeight / img.height;
+                        ctx.scale(bScale * bScaleX, bScale * bScaleY);
                         
-                        // Joint
-                        ctx.fillStyle = neonColor;
-                        ctx.beginPath();
-                        ctx.arc(0, 14, 3, 0, Math.PI*2);
-                        ctx.fill();
+                        if (boss.hitTimer > 0) {
+                            ctx.filter = 'brightness(3.0) saturate(0)';
+                        }
+                        
+                        ctx.drawImage(img, -img.width / 2, -img.height);
+                        
+                        if (boss.hitTimer > 0) {
+                            ctx.filter = 'none';
+                        }
+                    } else {
                         ctx.fillStyle = primaryColor;
-                        
-                        // Lower leg
-                        ctx.save();
-                        ctx.translate(0, 14);
-                        ctx.rotate(-swing * 0.5 + (boss.state === 'telegraph' ? 0.35 : 0));
-                        ctx.fillRect(-3, 0, 6, 16);
-                        ctx.strokeRect(-3, 0, 6, 16);
-                        
-                        // Paw / Claw
-                        ctx.fillStyle = '#100c1e';
-                        ctx.fillRect(-5, 14, 9, 3);
-                        ctx.restore();
-                        ctx.restore();
-                    });
-                    
-                    // 4. Main Body Torso (heavy mechanical beast chassis)
-                    ctx.fillStyle = primaryColor;
-                    ctx.strokeStyle = '#3d2c6e';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.moveTo(-32, -28); // Bottom back
-                    ctx.lineTo(-30, -50); // Top back
-                    ctx.lineTo(20, -50);  // Top front
-                    ctx.lineTo(26, -26);  // Bottom front
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Rib cage / side vents glowing neon
-                    ctx.save();
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = neonColor;
-                    ctx.fillStyle = neonColor;
-                    ctx.fillRect(-15, -42, 4, 10);
-                    ctx.fillRect(-5, -42, 4, 10);
-                    ctx.fillRect(5, -42, 4, 10);
-                    ctx.restore();
-                    
-                    // 5. Head and Neck (slanted forward)
-                    ctx.save();
-                    ctx.translate(22, -45);
-                    let headAngle = 0.15;
-                    if (boss.state === 'telegraph') headAngle = -0.1;
-                    ctx.rotate(headAngle);
-                    
-                    // Neck
-                    ctx.fillStyle = primaryColor;
-                    ctx.fillRect(-5, -5, 12, 16);
-                    ctx.strokeRect(-5, -5, 12, 16);
-                    
-                    // Head shape (slanted muzzle)
-                    ctx.beginPath();
-                    ctx.moveTo(2, -14); // Ear top
-                    ctx.lineTo(8, -16); // Muzzle top
-                    ctx.lineTo(26, -6);  // Nose
-                    ctx.lineTo(16, 4);   // Jaw
-                    ctx.lineTo(-4, 0);   // Back of head
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Ears
-                    ctx.beginPath();
-                    ctx.moveTo(-2, -12);
-                    ctx.lineTo(-6, -24);
-                    ctx.lineTo(4, -14);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    
-                    // Glowing Neon Eye Visor
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = neonColor;
-                    ctx.fillStyle = neonColor;
-                    ctx.beginPath();
-                    ctx.moveTo(6, -10);
-                    ctx.lineTo(16, -6);
-                    ctx.lineTo(12, -2);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                    ctx.restore(); // Restores head
-                    
-                    // 6. Dynamic Claws / Attacks (visual overlay when telegraphing or swinging)
-                    if (boss.state === 'telegraph' || boss.state === 'attack_swing') {
-                        ctx.save();
-                        ctx.translate(25, -25);
-                        let clawGlow = Math.sin(Date.now() / 40) * 0.25 + 0.75;
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = '#ff0055'; // Claw attack glows crimson red/pink
-                        ctx.strokeStyle = `rgba(255, 0, 119, ${clawGlow})`;
-                        ctx.lineWidth = 3.5;
-                        
-                        // Three sharp curved claws extended
-                        for (let c = -1; c <= 1; c++) {
-                            ctx.beginPath();
-                            ctx.moveTo(0, c * 6);
-                            ctx.quadraticCurveTo(20, c * 8, 28 + (boss.state === 'attack_swing' ? 12 : 0), c * 14);
-                            ctx.stroke();
-                        }
-                        ctx.restore();
+                        ctx.fillRect(-boss.width/2, -boss.height, boss.width, boss.height);
                     }
-                    
-                    ctx.restore(); // Restores hound scale/flip
-                    
+                    ctx.restore();
 
                 } else if (boss.archetype === 'harpy') {
                     // --- DRAW NEON HARPY (Mechanical Bird/Cyborg) ---
@@ -2552,7 +2388,9 @@ for (let key in GAME_ASSETS) {
 
                     // ボスの状態別スプライト切り替え
                     let img = IMAGES['boss_harpy_idle'];
-                    if (boss.state === 'telegraph' || boss.state === 'attack_swing') {
+                    if (boss.state === 'telegraph') {
+                        img = IMAGES['boss_harpy_telegraph'];
+                    } else if (boss.state === 'attack_swing') {
                         img = IMAGES['boss_harpy_attack'];
                     } else if (boss.state === 'stun') {
                         img = IMAGES['boss_harpy_stun'];
@@ -2589,7 +2427,7 @@ for (let key in GAME_ASSETS) {
                         ctx.fillStyle = primaryColor;
                         ctx.fillRect(-boss.width/2, -boss.height, boss.width, boss.height);
                     }
-                    ctx.restore(); // scale/flipのrestore
+                    ctx.restore(); // scale/flip of restore
                 }
                 ctx.restore(); // ボス全体のsaveに対するrestore
 
