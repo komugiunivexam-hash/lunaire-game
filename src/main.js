@@ -706,8 +706,8 @@ for (let key in GAME_ASSETS) {
             const player = {
                 x: 200,
                 y: GROUND_Y,
-                width: 32,
-                height: 56,
+                width: 65,
+                height: 135,
                 vx: 0,
                 speed: 4.0,
                 direction: 1, 
@@ -734,8 +734,8 @@ for (let key in GAME_ASSETS) {
             const boss = {
                 x: 600,
                 y: GROUND_Y,
-                width: 70,
-                height: 95,
+                width: 185,
+                height: 230,
                 state: 'idle', 
                 stateTimer: 60, // 最初は少し待機
                 currentPattern: null, 
@@ -830,6 +830,13 @@ for (let key in GAME_ASSETS) {
                 if (!BOSS_ARCHETYPES[type]) return;
                 boss.archetype = type;
                 const config = BOSS_ARCHETYPES[type];
+                if (type === 'hound') {
+                    boss.width = 185;
+                    boss.height = 230;
+                } else if (type === 'harpy') {
+                    boss.width = 140;
+                    boss.height = 215;
+                }
                 boss.maxHp = config.maxHp;
                 boss.hp = config.maxHp;
                 boss.lagHp = config.maxHp; // ラグバー初期化
@@ -940,7 +947,9 @@ for (let key in GAME_ASSETS) {
                 if (isShadow) {
                     ctx.save();
                     ctx.translate(x, drawY);
-                    ctx.scale(direction * 0.9, 0.9);
+                    let targetHeight = 160;
+                    let scale = targetHeight / img.height;
+                    ctx.scale(direction * 0.9 * scale, 0.9 * scale);
                     
                     // 残像のエフェクト加工（加算ブレンドとグロー）
                     ctx.globalCompositeOperation = 'screen';
@@ -956,7 +965,7 @@ for (let key in GAME_ASSETS) {
                 ctx.rotate(rotation);
 
                 // 高さをおよそ 85px にリサイズ（アス比維持）
-                let targetHeight = 85;
+                let targetHeight = 160;
                 let scale = targetHeight / img.height;
                 ctx.scale(scale * direction * scaleX, scale * scaleY);
 
@@ -1084,7 +1093,9 @@ for (let key in GAME_ASSETS) {
                         player.direction = toBossDir;
                         
                         const dist = Math.abs(boss.x - player.x);
-                        if (dist > 80 && dist < 240) {
+                        const minAssistDist = (player.width / 2) + (boss.width / 2) - 10;
+                        const maxAssistDist = minAssistDist + 180;
+                        if (dist > minAssistDist && dist < maxAssistDist) {
                             player.vx = toBossDir * 7.5; 
                         } else {
                             player.vx = 0;
@@ -1193,8 +1204,9 @@ for (let key in GAME_ASSETS) {
                     boss.x += boss.facing * 2.2 * speedFactor;
                     boss.x = Math.max(80, Math.min(CANVAS_WIDTH - 80, boss.x));
                     
-                    // プレイヤーとの距離が120px以下になったら、立ち止まって戦闘態勢（idle）へ
-                    if (dist <= 120) {
+                    // プレイヤーとの距離が適正値以下になったら、立ち止まって戦闘態勢（idle）へ
+                    const colDist = (player.width / 2) + (boss.width / 2) - 25;
+                    if (dist <= colDist + 50) {
                         boss.state = 'idle';
                         // 次の攻撃を繰り出すまでのディレイ（1.2秒〜2.0秒程度）を設定してテンポを遅くする
                         boss.stateTimer = Math.random() * 48 + 72;
@@ -1340,12 +1352,13 @@ for (let key in GAME_ASSETS) {
                 // ただし、ジャスト回避スロー中のダッシュ、または回避反撃突進（isCounter）のときはすり抜けを許可する
                 const pDist = Math.abs(boss.x - player.x);
                 const isPerfectDodgeActive = (player.state === 'dash' && player.dashWindow > 0 && slowMoTimer > 0) || player.isCounter;
-                if (pDist < 55 && !isPerfectDodgeActive && boss.state !== 'stun') {
+                const colDist = (player.width / 2) + (boss.width / 2) - 25;
+                if (pDist < colDist && !isPerfectDodgeActive && boss.state !== 'stun') {
                     // ボスとの接触時に押し戻す
                     if (player.x < boss.x) {
-                        player.x = boss.x - 55;
+                        player.x = boss.x - colDist;
                     } else {
-                        player.x = boss.x + 55;
+                        player.x = boss.x + colDist;
                     }
                     // ダッシュ中だった場合は衝突したため速度を0にする
                     if (player.state === 'dash') {
@@ -1388,7 +1401,8 @@ for (let key in GAME_ASSETS) {
                     // ターゲットアシスト: 踏み込み中にボスの手前（密着距離）に達したらスライドを停止
                     const dist = Math.abs(boss.x - player.x);
                     const toBossDir = boss.x > player.x ? 1 : -1;
-                    if (dist <= 85 && Math.sign(player.vx) === toBossDir && !player.isCounter) {
+                    const colDist = (player.width / 2) + (boss.width / 2) - 25;
+                    if (dist <= colDist + 10 && Math.sign(player.vx) === toBossDir && !player.isCounter) {
                         player.vx = 0;
                     }
                 } else {
@@ -1486,7 +1500,7 @@ for (let key in GAME_ASSETS) {
                 // ボス攻撃判定（当たり判定のタイミングと見た目を一致させる）
                 if (boss.attackActive && !boss.attackHasHit) {
                     const dist = Math.abs(boss.x - player.x);
-                    const reach = boss.currentPattern === 'thrust' ? 220 : (boss.currentPattern === 'slash' ? 180 : 130);
+                    const reach = boss.currentPattern === 'thrust' ? 300 : (boss.currentPattern === 'slash' ? 250 : 180);
                     const inFront = boss.facing === -1 ? (player.x <= boss.x + 10) : (player.x >= boss.x - 10);
                     const isCloseEnough = dist < reach && inFront;
 
@@ -1588,7 +1602,7 @@ for (let key in GAME_ASSETS) {
                     const dist = Math.abs(player.x - boss.x);
                     const inFront = player.direction === 1 ? (boss.x >= player.x - 30) : (boss.x <= player.x + 30);
                     // カウンター攻撃/パリィカウンター攻撃はめくりも許可
-                    const isCloseEnough = dist < 160 && (inFront || dist < 90 || player.isCounter || player.isParryCounter);
+                    const isCloseEnough = dist < 220 && (inFront || dist < 130 || player.isCounter || player.isParryCounter);
 
                     if (isCloseEnough) {
                         player.attackHasHit = true;
@@ -2362,7 +2376,7 @@ for (let key in GAME_ASSETS) {
                         }
                         
                         // 高さを 135px にリサイズ
-                        let bTargetHeight = 135;
+                        let bTargetHeight = 260;
                         let bScale = bTargetHeight / img.height;
                         ctx.scale(bScale * bScaleX, bScale * bScaleY);
                         
@@ -2406,7 +2420,7 @@ for (let key in GAME_ASSETS) {
                         }
                         
                         // 高さを 120px にリサイズ
-                        let hTargetHeight = 120;
+                        let hTargetHeight = 240;
                         let hScale = hTargetHeight / img.height;
                         ctx.scale(hScale * hScaleX, hScale * hScaleY);
                         
@@ -2541,7 +2555,7 @@ for (let key in GAME_ASSETS) {
                     ctx.lineWidth = 1.5;
                     ctx.strokeRect(-boss.width/2, -boss.height, boss.width, boss.height);
                     if (boss.attackActive) {
-                        const reach = boss.currentPattern === 'thrust' ? 140 : (boss.currentPattern === 'slash' ? 120 : 80);
+                        const reach = boss.currentPattern === 'thrust' ? 300 : (boss.currentPattern === 'slash' ? 250 : 180);
                         ctx.fillStyle = 'rgba(255, 0, 85, 0.2)';
                         ctx.fillRect(boss.facing === 1 ? -10 : -reach, -boss.height, reach + 10, boss.height);
                     }
