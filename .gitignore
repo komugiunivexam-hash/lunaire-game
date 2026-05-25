@@ -1,0 +1,6 @@
+# Git ignore rules for LUNAIRE game project
+*.bak
+*.tmp
+.DS_Store
+node_modules/
+dist/
